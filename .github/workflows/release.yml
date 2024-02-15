@@ -56,17 +56,17 @@ jobs:
         name: "Build tmkms binary"
         run: |
           cd tmkms
-          cargo build --release --features=softsign,fortanixdsm          
-          mv target/release/tmkms "target/release/tmkms-softsign-${{ env.TMKMS_VERSION }}"   
+          cargo build --release --features=softsign,fortanixdsm
 
       - id: "upload-artifact"
         name: "Save binary to workspace"
         uses: "actions/upload-artifact@v3"
         with:
           name: "tmkms"
-          path: "./tmkms/target/release/tmkms*"
+          path: "./tmkms/target/release/tmkms"
           if-no-files-found: "error"
           retention-days: 1
+
   publish:
     name: "Publish"
     needs: "build"
@@ -87,7 +87,7 @@ jobs:
           body: |
             For changes, see here: https://github.com/iqlusioninc/tmkms/releases/tag/${{ env.TMKMS_VERSION }}
           files: |
-            binaries/tmkms-${{ env.TMKMS_VERSION }}
+            binaries/tmkms
           tag_name: "${{ env.TMKMS_VERSION }}"
           draft: false
           prerelease: false
