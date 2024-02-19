@@ -29,12 +29,6 @@ jobs:
         with:
           toolchain: "stable"
 
-      - id: "setup-dependencies"
-        name: "Install required system packages"
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends build-essential curl git musl-dev
-
       - id: "clone"
         name: "Clone tmkms source"
         uses: "actions/checkout@v4"
@@ -51,6 +45,9 @@ jobs:
         with:
           path: "~/.cargo"
           key: "cargo-${{ hashFiles('tmkms/Cargo.lock') }}"
+          restore-keys: |
+            cargo-${{ hashFiles('tmkms/Cargo.lock') }}
+            cargo-
 
       - id: "build"
         name: "Build tmkms binary"
