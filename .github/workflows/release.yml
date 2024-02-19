@@ -7,12 +7,86 @@ on:
       version:
         description: "Specify the version"
         required: true
-        default: "v1.0.0"
+        default: "v0.13.1"
   pull_request:
     branches:
       - "master"
+
+permissions:
+  contents: "write"
+
+env:
+  TMKMS_VERSION: "${{ inputs.version || 'v0.13.1' }}"
 
 jobs:
   build:
     name: "Build"
     runs-on: "ubuntu-latest-l"
+    steps:
+      - id: "setup-rust"
+        name: "Set up Rust toolchain"
+        uses: "dtolnay/rust-toolchain@v1"
+        with:
+          toolchain: "stable"
+
+      - id: "clone"
+        name: "Clone tmkms source"
+        uses: "actions/checkout@v4"
+        with:
+          repository: "iqlusioninc/tmkms"
+          fetch-tags: true
+          path: "tmkms"
+          ref: "refs/tags/${{ env.TMKMS_VERSION }}"
+          submodules: true
+
+      - id: "cache"
+        name: "Cache Cargo dependencies"
+        uses: "actions/cache@v3"
+        with:
+          path: "~/.cargo"
+          key: "cargo-${{ hashFiles('tmkms/Cargo.lock') }}"
+          restore-keys: |
+            cargo-${{ hashFiles('tmkms/Cargo.lock') }}
+            cargo-
+
+      - id: "build"
+        name: "Build tmkms binary"
+        run: |
+          cd tmkms
+          cargo build --release --features=softsign,fortanixdsm
+
+      - id: "upload-artifact"
+        name: "Save binary to workspace"
+        uses: "actions/upload-artifact@v3"
+        with:
+          name: "tmkms"
+          path: "./tmkms/target/release/tmkms"
+          if-no-files-found: "error"
+          retention-days: 1
+
+  publish:
+    name: "Publish"
+    needs: "build"
+    runs-on: "ubuntu-latest"
+    if: "${{ github.event_name == 'workflow_dispatch' }}"
+    steps:
+      - id: "download-artifact"
+        name: "Download binary from workspace"
+        uses: "actions/download-artifact@v3"
+        with:
+          name: "tmkms"
+          path: "binaries"
+
+      - id: "publish"
+        name: "Publish Github release"
+        uses: "softprops/action-gh-release@v1"
+        with:
+          body: |
+            For changes, see here: https://github.com/iqlusioninc/tmkms/releases/tag/${{ env.TMKMS_VERSION }}
+          files: |
+            binaries/tmkms
+          tag_name: "${{ env.TMKMS_VERSION }}"
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          generate_release_notes: true
